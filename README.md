@@ -149,6 +149,45 @@ The script creates JSON files in the `data/` directory containing:
 
 These files can then be filtered based on coverage, quality metrics, and other criteria.
 
+## Filtering Results
+
+After searching SRA, you'll likely want to filter the results based on coverage and quality metrics.
+
+### Using the Filter Script
+
+```bash
+# Filter Salmonella results for 80-150x coverage
+python scripts/filter_metadata.py \
+  --input data/salmonella_metadata.json \
+  --output results/salmonella_filtered.csv \
+  --min-coverage 80 \
+  --max-coverage 150
+
+# Filter with preferred instruments
+python scripts/filter_metadata.py \
+  --input data/ecoli_metadata.json \
+  --output results/ecoli_filtered.csv \
+  --min-coverage 50 \
+  --max-coverage 250 \
+  --instruments NextSeq NovaSeq MiSeq
+```
+
+### Filter Options
+
+- `--input`: Input JSON (from search_sra.py) or CSV file
+- `--output`: Output CSV file for filtered results
+- `--min-coverage`: Minimum coverage (default: 50x)
+- `--max-coverage`: Maximum coverage (default: 250x)
+- `--instruments`: Preferred sequencing instruments (optional)
+
+The filter script will:
+- Calculate estimated coverage based on genome size
+- Filter for paired-end Illumina data
+- Filter by coverage range
+- Optionally filter by instrument model
+- Sort by coverage (highest first)
+- Provide coverage statistics
+
 ## Project Structure
 
 ```
@@ -159,7 +198,8 @@ sra-accession-search/
 ├── requirements.txt           # Python dependencies
 ├── config.example.sh          # Template for credentials
 ├── scripts/
-│   └── search_sra.py          # Main search script
+│   ├── search_sra.py          # Search NCBI SRA database
+│   └── filter_metadata.py     # Filter results by coverage/quality
 ├── data/                      # Raw metadata (gitignored)
 │   └── .gitkeep
 └── results/                   # Filtered results (gitignored)

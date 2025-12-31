@@ -1,0 +1,129 @@
+{
+  "project": {
+    "name": "SRA Accession Search",
+    "description": "Tools for searching NCBI SRA database and filtering bacterial WGS data by coverage and quality metrics",
+    "purpose": "Enable researchers to find high-quality paired-end Illumina WGS data for bacterial genome assembly pipelines",
+    "repository": "https://github.com/zsb3/sra-accession-search",
+    "license": "Public Domain"
+  },
+  "status": {
+    "version": "1.0.0",
+    "maturity": "active",
+    "maintenance": "actively maintained",
+    "test_coverage": "100%",
+    "ci_status": "passing"
+  },
+  "technology": {
+    "language": "Python",
+    "python_versions": ["3.10", "3.11", "3.12"],
+    "frameworks": [],
+    "key_libraries": {
+      "biopython": "Bio.Entrez API for NCBI access",
+      "pandas": "Data manipulation and filtering",
+      "requests": "HTTP requests for RunInfo API"
+    },
+    "testing": {
+      "framework": "pytest",
+      "coverage_tool": "pytest-cov",
+      "mocking": "pytest-mock + unittest.mock",
+      "coverage_threshold": "100%"
+    },
+    "code_quality": {
+      "formatter": "black (100 char lines)",
+      "linter": "flake8",
+      "pre_commit": "available (.pre-commit-config.yaml)"
+    }
+  },
+  "domain": {
+    "field": "Bioinformatics / Public Health Genomics",
+    "target_organisms": [
+      "Salmonella enterica",
+      "Escherichia coli", 
+      "Listeria monocytogenes",
+      "Campylobacter jejuni",
+      "Staphylococcus aureus",
+      "Streptococcus pneumoniae"
+    ],
+    "data_source": "NCBI Sequence Read Archive (SRA)",
+    "sequencing_type": "Paired-end Illumina WGS",
+    "coverage_range": "50-250x (default)",
+    "genome_sizes_mb": {
+      "Salmonella": 4.8,
+      "Escherichia": 5.0,
+      "Listeria": 3.0,
+      "Campylobacter": 1.7,
+      "Staphylococcus": 2.8,
+      "Streptococcus": 2.0
+    }
+  },
+  "architecture": {
+    "pattern": "Script-based CLI tools",
+    "components": {
+      "search_sra.py": "Search NCBI SRA and retrieve metadata",
+      "filter_metadata.py": "Filter results by coverage and quality"
+    },
+    "data_flow": "NCBI SRA → JSON metadata → CSV filtered results",
+    "external_dependencies": [
+      "NCBI E-utilities API (esearch, esummary)",
+      "NCBI SRA RunInfo API"
+    ]
+  },
+  "constraints": {
+    "api_rate_limits": {
+      "ncbi_without_key": "3 requests/second",
+      "ncbi_with_key": "10 requests/second"
+    },
+    "performance": {
+      "max_results_default": 5000,
+      "batch_size": 500
+    },
+    "requirements": {
+      "ncbi_email": "required",
+      "ncbi_api_key": "optional but recommended"
+    }
+  },
+  "development": {
+    "workflow": {
+      "branching": "main branch",
+      "testing": "pytest tests/ --cov=scripts",
+      "formatting": "black scripts/ tests/",
+      "linting": "flake8 scripts/ tests/"
+    },
+    "ci_cd": {
+      "platform": "GitHub Actions",
+      "workflows": {
+        "test.yml": "Run tests on push/PR (Python 3.10-3.12)",
+        "release.yml": "Create releases on version tags"
+      },
+      "secrets": {
+        "NCBI_EMAIL": "For integration tests (optional)",
+        "NCBI_API_KEY": "For integration tests (optional)"
+      }
+    },
+    "git_configuration": {
+      "personal_repos": "workflow-scoped token",
+      "org_repos": "standard token (no workflow scope)"
+    }
+  },
+  "key_decisions": {
+    "testing_framework": "pytest for fixtures and parametrization",
+    "coverage_calculation": "bases / (genome_size_mb * 1_000_000)",
+    "genome_size_source": "NCBI genome assemblies",
+    "default_filters": "PAIRED + ILLUMINA + WGS only",
+    "date_range": "2020-2025 (recent data prioritized)",
+    "output_format": "JSON for metadata, CSV for filtered results"
+  },
+  "common_operations": {
+    "search": "python scripts/search_sra.py --organism 'Name' --output file.json",
+    "filter": "python scripts/filter_metadata.py --input file.json --output results.csv",
+    "test": "pytest tests/ --cov=scripts",
+    "format": "black scripts/ tests/ && flake8 scripts/ tests/"
+  },
+  "ai_assistance": {
+    "coding_standards": ".cursorrules",
+    "task_templates": ".ai/prompts.md",
+    "architecture_docs": "docs/ARCHITECTURE.md",
+    "decision_records": "docs/DECISIONS.md",
+    "conventions": "CONVENTIONS.md"
+  }
+}

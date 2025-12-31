@@ -1,5 +1,10 @@
 # SRA Accession Search
 
+[![Tests](https://github.com/zsb3/sra-accession-search/actions/workflows/test.yml/badge.svg)](https://github.com/zsb3/sra-accession-search/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](https://github.com/zsb3/sra-accession-search)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Public%20Domain-lightgrey)](LICENSE)
+
 Search NCBI SRA for bacterial paired-end Illumina WGS data suitable for genome assembly pipelines.
 
 ## Overview
@@ -227,6 +232,51 @@ sra-accession-search/
 - Data files are excluded from git to avoid repository bloat
 - The `project_background.md` file (if present) contains detailed methodology and is gitignored
 
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests with coverage
+pytest tests/ --cov=scripts --cov-report=term
+
+# Run specific test file
+pytest tests/test_search_sra.py -v
+
+# Run with coverage report in HTML
+pytest tests/ --cov=scripts --cov-report=html
+# Open htmlcov/index.html in browser
+```
+
+### CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+**Test Workflow** (`.github/workflows/test.yml`):
+- Runs on every push and pull request
+- Tests across Python 3.10, 3.11, and 3.12
+- Enforces 85% minimum code coverage
+- Includes optional integration tests (requires NCBI secrets)
+- Uploads coverage reports and artifacts
+
+**Release Workflow** (`.github/workflows/release.yml`):
+- Triggers on version tags (e.g., `v1.0.0`)
+- Runs full test suite
+- Creates GitHub releases automatically
+
+### Code Quality
+
+```bash
+# Check code formatting
+black --check scripts/ tests/
+
+# Format code
+black scripts/ tests/
+
+# Lint code
+flake8 scripts/ tests/
+```
+
 ## Troubleshooting
 
 **"No results found":**
@@ -240,6 +290,10 @@ sra-accession-search/
 
 **Import errors:**
 - Verify all dependencies are installed: `pip install -r requirements.txt`
+
+**GitHub Actions workflow push rejected:**
+- If you see "refusing to allow a Personal Access Token to create or update workflow", you need a token with `workflow` scope
+- Alternative: Create the workflow files directly on GitHub's web interface
 
 ## License
 

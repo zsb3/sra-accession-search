@@ -37,33 +37,64 @@ pip install -r requirements.txt
 
 ### 3. Configure Credentials
 
+### 3. Configure NCBI Credentials
+
+**Email (Required):**
+NCBI requires an email address for all API requests.
+
+**API Key (Optional but Recommended):**
+An API key increases rate limits from 3 to 10 requests/second, significantly speeding up large searches.
+
+**Option A: Environment Variables (Recommended)**
+
+Add to your `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+export NCBI_EMAIL="your.email@example.com"
+export NCBI_API_KEY="your_api_key_here"  # Optional but recommended
+```
+
+Get a free API key at: https://www.ncbi.nlm.nih.gov/account/settings/
+
+Then reload your shell:
+
+```bash
+source ~/.bashrc
+```
+
+**Option B: Config File (Alternative)**
+
 ```bash
 # Copy the example config
 cp config.example.sh config.sh
 
 # Edit config.sh with your email and API key
-# Use any text editor (nano, vim, etc.)
 nano config.sh
-```
 
-**Important:** Never commit `config.sh` to git! It's already in `.gitignore`.
-
-### 4. Source Credentials
-
-Before running searches, load your credentials:
-
-```bash
+# Source it before running scripts
 source config.sh
 ```
+
+**Important:** Never commit credentials to git! Both `config.sh` and your API key are already in `.gitignore`.
 
 ## Usage
 
 ### Basic Search
 
+With environment variables configured (recommended):
+
 ```bash
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
+  --organism "Salmonella enterica" \
+  --output data/salmonella_metadata.json
+```
+
+Or override with command-line arguments:
+
+```bash
+python scripts/search_sra.py \
+  --email "your.email@example.com" \
+  --api-key "your_api_key" \
   --organism "Salmonella enterica" \
   --output data/salmonella_metadata.json
 ```
@@ -71,48 +102,33 @@ python scripts/search_sra.py \
 ### Search All Target Organisms
 
 ```bash
-# Make sure credentials are loaded
-source config.sh
-
 # Salmonella
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Salmonella enterica" \
   --output data/salmonella_metadata.json
 
 # E. coli
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Escherichia coli" \
   --output data/ecoli_metadata.json
 
 # Listeria
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Listeria monocytogenes" \
   --output data/listeria_metadata.json
 
 # Campylobacter
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Campylobacter jejuni" \
   --output data/campylobacter_metadata.json
 
 # Staphylococcus
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Staphylococcus aureus" \
   --output data/staphylococcus_metadata.json
 
 # Streptococcus
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Streptococcus pneumoniae" \
   --output data/streptococcus_metadata.json
 ```
@@ -120,12 +136,12 @@ python scripts/search_sra.py \
 ### Command-Line Options
 
 **Required:**
-- `--email`: Your email address (required by NCBI, no registration needed)
-- `--api-key`: Your NCBI API key
 - `--organism`: Species name (e.g., "Salmonella enterica")
 - `--output`: Output JSON file path
 
 **Optional:**
+- `--email`: Your email address (default: from `NCBI_EMAIL` env var)
+- `--api-key`: Your NCBI API key (default: from `NCBI_API_KEY` env var)
 - `--date-range`: Publication date range (default: `2020:2025`)
 - `--max-results`: Maximum records to retrieve (default: `5000`)
 
@@ -133,8 +149,6 @@ python scripts/search_sra.py \
 
 ```bash
 python scripts/search_sra.py \
-  --email "$NCBI_EMAIL" \
-  --api-key "$NCBI_API_KEY" \
   --organism "Salmonella enterica" \
   --output data/salmonella_recent.json \
   --date-range "2023:2025" \

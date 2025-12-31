@@ -10,10 +10,11 @@ Usage:
 """
 
 from Bio import Entrez
-import json
-import time
 import argparse
+import json
+import os
 import sys
+import time
 
 def search_sra(query, retmax=5000):
     """Search SRA database and return list of UIDs"""
@@ -62,13 +63,13 @@ def main():
     )
     parser.add_argument(
         '--email',
-        required=True,
-        help='Your email address (required by NCBI, does not need to be registered)'
+        default=os.environ.get('NCBI_EMAIL'),
+        help='Your email address (default: from NCBI_EMAIL env var)'
     )
     parser.add_argument(
         '--api-key',
-        required=True,
-        help='NCBI API key (get free key at https://www.ncbi.nlm.nih.gov/account/settings/)'
+        default=os.environ.get('NCBI_API_KEY'),
+        help='NCBI API key (default: from NCBI_API_KEY env var)'
     )
     parser.add_argument(
         '--organism',
@@ -94,9 +95,21 @@ def main():
     
     args = parser.parse_args()
     
-    # Configure Entrez with email and API key
+    # Validate email is available
+    if not args.email:
+        print("Error: Email is required. Set NCBI_EMAIL env var or use --email")
+        sys.exit(1)
+    
+    # Configure Entrez with email
     Entrez.email = args.email
-    Entrez.api_key = args.api_key
+    
+    # Configure API key if available
+    if args.api_key:
+        Entrez.api_key = args.api_key
+    else:
+        print("Warning: No API key provided. Rate limited to 3 requests/second.")
+        print("Get a free API key at: https://www.ncbi.nlm.nih.gov/account/settings/")
+        print("Set NCBI_API_KEY env var or use --api-key to increase to 10 req/sec\n")
     
     # Build and execute query
     query = build_query(args.organism, args.date_range)
@@ -122,8 +135,8 @@ def main():
     batch_size = 500
     total_to_fetch = min(count, args.max_results)
     
-    # With API key, we can do 10 req/sec, so sleep 0.11 seconds
-    sleep_time = 0.11
+    # Rate limiting: 10 req/sec with API key, 3 req/sec without
+    sleep_time = 0.11 if args.api_key else 0.34
     
     for start in range(0, total_to_fetch, batch_size):
         end = min(start + batch_size, total_to_fetch)

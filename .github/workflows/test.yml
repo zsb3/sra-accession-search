@@ -1,0 +1,142 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  test:
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run unit tests with coverage
+      run: |
+        pytest tests/ --cov=scripts --cov-report=term --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: matrix.python-version == '3.12'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    
+    - name: Upload coverage HTML artifact
+      uses: actions/upload-artifact@v4
+      if: matrix.python-version == '3.12'
+      with:
+        name: coverage-report
+        path: htmlcov/
+        retention-days: 30
+    
+    - name: Check coverage threshold
+      run: |
+        coverage report --fail-under=85
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black
+    
+    - name: Check code formatting with black
+      run: |
+        black --check --diff scripts/ tests/
+      continue-on-error: true
+    
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 scripts/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 scripts/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+
+  integration-test:
+    name: Integration Tests (Optional)
+    runs-on: ubuntu-latest
+    # Only run if secrets are configured
+    if: ${{ secrets.NCBI_EMAIL != '' && secrets.NCBI_API_KEY != '' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run limited integration test
+      env:
+        NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
+        NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+      run: |
+        # Test with minimal data (5 records) to avoid API abuse
+        python scripts/search_sra.py \
+          --organism "Listeria monocytogenes" \
+          --output test_integration.json \
+          --max-results 5
+        
+        # Verify output exists and has data
+        if [ ! -f test_integration.json ]; then
+          echo "Error: Integration test output not found"
+          exit 1
+        fi
+        
+        # Check that we got results
+        python -c "import json; data=json.load(open('test_integration.json')); assert data['retrieved_count'] > 0, 'No records retrieved'"
+        
+        echo "Integration test passed!"
+    
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results
+        path: test_integration.json
+        retention-days: 7

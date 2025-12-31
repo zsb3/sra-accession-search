@@ -17,6 +17,8 @@ import sys
 import time
 from typing import Any
 
+from schemas import SRASearchResult
+
 
 def search_sra(query: str, retmax: int = 5000) -> dict[str, Any]:
     """Search SRA database and return list of UIDs"""
@@ -151,17 +153,21 @@ def main() -> None:
         all_summaries.extend(summaries)
         time.sleep(sleep_time)  # Rate limiting: 10 req/sec with API key
 
-    # Save results
-    output_data = {
-        "organism": args.organism,
-        "query": query,
-        "total_count": count,
-        "retrieved_count": len(all_summaries),
-        "summaries": all_summaries,
-    }
+    # Save results with Pydantic validation
+    try:
+        result = SRASearchResult(
+            organism=args.organism,
+            query=query,
+            total_count=count,
+            retrieved_count=len(all_summaries),
+            summaries=all_summaries,  # type: ignore[arg-type]  # Pydantic auto-converts dicts
+        )
+    except Exception as e:
+        print(f"Error: Failed to validate output data: {e}")
+        sys.exit(1)
 
     with open(args.output, "w") as f:
-        json.dump(output_data, f, indent=2)
+        json.dump(result.to_dict(), f, indent=2)
 
     print(f"\nSuccess! Saved {len(all_summaries)} summaries to {args.output}")
     print(f"Total matching records: {count}")

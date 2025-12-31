@@ -20,6 +20,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+from schemas import SRASearchResult
+
 # Genome sizes (in bases) for coverage calculation
 GENOME_SIZES: dict[str, int] = {
     "Salmonella": 4_800_000,
@@ -91,12 +94,24 @@ def extract_summary_data(summaries: list[dict[str, Any]]) -> list[dict[str, Any]
 
 
 def parse_json_metadata(json_file: str | Path) -> pd.DataFrame:
-    """Parse JSON metadata file from search_sra.py output."""
-    with open(json_file, "r") as f:
-        data = json.load(f)
+    """Parse JSON metadata file from search_sra.py output.
 
-    organism = data.get("organism", "")
-    summaries = data.get("summaries", [])
+    Validates JSON structure using Pydantic schema before processing.
+    """
+    # Load and validate JSON structure
+    try:
+        with open(json_file, "r") as f:
+            data = json.load(f)
+        validated_result = SRASearchResult.from_dict(data)
+        organism = validated_result.organism
+        summaries = [s.model_dump() for s in validated_result.summaries]
+    except ValidationError as e:
+        print(f"Error: Invalid JSON structure in {json_file}")
+        print(f"Validation errors: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: Failed to parse JSON: {e}")
+        sys.exit(1)
 
     # Extract genus from organism name
     genus = organism.split()[0] if organism else None

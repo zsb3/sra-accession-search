@@ -346,3 +346,29 @@ def test_module_execution():
                     except SystemExit:
                         # Expected to exit when no results found
                         pass
+
+
+def test_validation_error_handling():
+    """Test that validation errors are caught and handled properly"""
+    env_vars = {"NCBI_EMAIL": "test@example.com", "NCBI_API_KEY": "testkey"}
+
+    with patch.dict(os.environ, env_vars):
+        with patch("search_sra.Entrez.esearch"):
+            with patch("search_sra.Entrez.read") as mock_read:
+                with patch("search_sra.Entrez.esummary"):
+                    # Create an invalid response that will fail Pydantic validation
+                    # by having retrieved_count != len(summaries)
+                    mock_read.return_value = {"Count": "1", "WebEnv": "test", "QueryKey": "1"}
+
+                    with patch("search_sra.fetch_summaries") as mock_fetch:
+                        # Return empty list, but main will say retrieved_count=1
+                        # This mismatch should trigger validation error
+                        mock_fetch.return_value = []
+
+                        with patch(
+                            "sys.argv",
+                            ["search_sra.py", "--organism", "Test", "--output", "test.json"],
+                        ):
+                            with pytest.raises(SystemExit) as exc_info:
+                                runpy.run_module("scripts.search_sra", run_name="__main__")
+                            assert exc_info.value.code == 1

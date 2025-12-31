@@ -628,6 +628,91 @@ SRR002,Listeria monocytogenes,450000000"""
             if os.path.exists(json_file):
                 os.unlink(json_file)
 
+    def test_main_invalid_json_schema(self):
+        """Test main function with invalid JSON schema"""
+        # Create file with invalid schema (missing required fields)
+        invalid_data = {
+            "organism": "Test",
+            # Missing query, total_count, retrieved_count, summaries
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(invalid_data, f)
+            json_file = f.name
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            csv_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["filter_metadata.py", "--input", json_file, "--output", csv_file]
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    runpy.run_module("scripts.filter_metadata", run_name="__main__")
+                assert exc_info.value.code == 1
+        finally:
+            for f in [json_file, csv_file]:
+                if os.path.exists(f):
+                    os.unlink(f)
+
+    def test_main_mismatched_counts_in_json(self):
+        """Test main function with mismatched retrieved_count and summaries length"""
+        invalid_data = {
+            "organism": "Test",
+            "query": "test query",
+            "total_count": 100,
+            "retrieved_count": 5,  # Says 5 but only 1 summary
+            "summaries": [
+                {
+                    "Runs": '<Run acc="SRR123" total_bases="100000"/>',
+                    "ExpXml": "<Summary><Title>Test</Title></Summary>",
+                    "CreateDate": "2024/01/01",
+                    "UpdateDate": "2024/01/01",
+                }
+            ],
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(invalid_data, f)
+            json_file = f.name
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            csv_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["filter_metadata.py", "--input", json_file, "--output", csv_file]
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    runpy.run_module("scripts.filter_metadata", run_name="__main__")
+                assert exc_info.value.code == 1
+        finally:
+            for f in [json_file, csv_file]:
+                if os.path.exists(f):
+                    os.unlink(f)
+
+    def test_main_json_parsing_error(self):
+        """Test main function with JSON that can't be parsed"""
+        # Create file with invalid JSON (not even valid JSON syntax)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write("{invalid json content")  # Invalid JSON
+            json_file = f.name
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            csv_file = f.name
+
+        try:
+            with patch(
+                "sys.argv", ["filter_metadata.py", "--input", json_file, "--output", csv_file]
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    runpy.run_module("scripts.filter_metadata", run_name="__main__")
+                assert exc_info.value.code == 1
+        finally:
+            for f in [json_file, csv_file]:
+                if os.path.exists(f):
+                    os.unlink(f)
+
 
 def test_module_execution():
     """Test that the module can be executed as __main__"""

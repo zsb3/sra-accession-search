@@ -248,10 +248,44 @@ sra-accession-search/
 
 ## Development
 
+### Quick Commands (Makefile)
+
+The project includes a Makefile for common development tasks:
+
+```bash
+# Show all available commands
+make help
+
+# Install dependencies
+make install          # Production dependencies only
+make install-dev      # All dependencies + pre-commit hooks
+
+# Testing
+make test             # Run tests with coverage
+make coverage         # Run tests and open HTML coverage report
+
+# Code quality
+make format           # Format code with black
+make format-check     # Check formatting without modifying
+make lint             # Run flake8 linter
+make type-check       # Run mypy type checker
+make check            # Run ALL quality checks (format, lint, type-check, test)
+
+# Cleanup
+make clean            # Remove cache files and build artifacts
+
+# Run scripts
+make run-search ARGS="--organism 'Listeria' --output data.json"
+make run-filter ARGS="--input data.json --output results.csv"
+```
+
 ### Running Tests
 
 ```bash
-# Run all tests with coverage
+# Using make (recommended)
+make test
+
+# Or directly with pytest
 pytest tests/ --cov=scripts --cov-report=term
 
 # Run specific test file
@@ -270,7 +304,7 @@ The project uses GitHub Actions for continuous integration:
 - Runs on every push and pull request
 - Tests across Python 3.10, 3.11, and 3.12
 - Enforces 100% code coverage
-- Code quality checks with black and flake8
+- Code quality checks with black, flake8, and mypy
 - Includes optional integration tests (requires NCBI secrets)
 - Uploads coverage reports and artifacts
 
@@ -281,8 +315,20 @@ The project uses GitHub Actions for continuous integration:
 
 ### Code Quality
 
-The project uses **black** for code formatting and **flake8** for linting.
+The project uses **black** for code formatting, **flake8** for linting, and **mypy** for type checking.
 
+```bash
+# Using make (recommended)
+make check            # Run all quality checks
+
+# Or individually
+make format-check     # Check code formatting
+make format           # Format code
+make lint             # Lint code
+make type-check       # Type check with mypy
+```
+
+**Manual commands:**
 ```bash
 # Check code formatting
 black --check scripts/ tests/
@@ -293,17 +339,20 @@ black scripts/ tests/
 # Lint code
 flake8 scripts/ tests/
 
-# Run all quality checks
-black scripts/ tests/ && flake8 scripts/ tests/
+# Type check
+mypy scripts/
 ```
 
 **Configuration:**
 - Black: 100 character line length (configured in `pyproject.toml`)
 - Flake8: Rules in `.flake8` file
+- Mypy: Configuration in `pyproject.toml`
 - Pre-commit hooks available in `.pre-commit-config.yaml`
 
 **Setup pre-commit hooks** (optional):
 ```bash
+make install-dev
+# Or manually:
 pip install pre-commit
 pre-commit install
 # Now black and flake8 will run automatically on git commit

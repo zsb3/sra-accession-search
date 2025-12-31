@@ -1,0 +1,41 @@
+# Project-specific files
+project_background.md
+
+# Credentials - NEVER commit these!
+config.sh
+*.key
+*.env
+
+# Data files
+data/*.json
+data/*.csv
+data/*.tsv
+results/*.json
+results/*.csv
+results/*.tsv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

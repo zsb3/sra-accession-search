@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Search NCBI SRA for bacterial paired-end Illumina WGS data.
+
+Usage:
+    python search_sra.py \
+        --email your.email@example.com \
+        --api-key YOUR_NCBI_API_KEY \
+        --organism "Salmonella enterica" \
+        --output salmonella_metadata.json
+"""
+
+from Bio import Entrez
+import json
+import time
+import argparse
+import sys
+
+def search_sra(query, retmax=5000):
+    """Search SRA database and return list of UIDs"""
+    handle = Entrez.esearch(
+        db="sra",
+        term=query,
+        retmax=retmax,
+        usehistory="y"
+    )
+    results = Entrez.read(handle)
+    handle.close()
+    return results
+
+def fetch_summaries(webenv, query_key, retstart=0, retmax=500):
+    """Fetch summaries for search results"""
+    handle = Entrez.esummary(
+        db="sra",
+        query_key=query_key,
+        WebEnv=webenv,
+        retstart=retstart,
+        retmax=retmax
+    )
+    results = Entrez.read(handle)
+    handle.close()
+    return results
+
+def get_runinfo(accessions):
+    """Get RunInfo CSV for accessions"""
+    import requests
+    
+    acc_list = ','.join(accessions) if isinstance(accessions, list) else accessions
+    url = f"https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?save=efetch&db=sra&rettype=runinfo&term={acc_list}"
+    
+    response = requests.get(url)
+    return response.text
+
+def build_query(organism, date_range="2020:2025"):
+    """Build SRA search query for paired-end Illumina WGS data"""
+    query = f'"{organism}"[Organism] AND "illumina"[Platform] AND "paired"[Layout] AND "wgs"[Strategy] AND {date_range}[Publication Date]'
+    return query
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Search NCBI SRA for bacterial paired-end Illumina WGS data',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        '--email',
+        required=True,
+        help='Your email address (required by NCBI, does not need to be registered)'
+    )
+    parser.add_argument(
+        '--api-key',
+        required=True,
+        help='NCBI API key (get free key at https://www.ncbi.nlm.nih.gov/account/settings/)'
+    )
+    parser.add_argument(
+        '--organism',
+        required=True,
+        help='Organism name (e.g., "Salmonella enterica", "Escherichia coli")'
+    )
+    parser.add_argument(
+        '--output',
+        required=True,
+        help='Output JSON file for results (e.g., salmonella_metadata.json)'
+    )
+    parser.add_argument(
+        '--date-range',
+        default='2020:2025',
+        help='Publication date range (default: 2020:2025)'
+    )
+    parser.add_argument(
+        '--max-results',
+        type=int,
+        default=5000,
+        help='Maximum number of results to retrieve (default: 5000)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Configure Entrez with email and API key
+    Entrez.email = args.email
+    Entrez.api_key = args.api_key
+    
+    # Build and execute query
+    query = build_query(args.organism, args.date_range)
+    
+    print(f"Organism: {args.organism}")
+    print(f"Query: {query}")
+    print(f"Searching SRA...")
+    
+    search_results = search_sra(query, retmax=args.max_results)
+    
+    count = int(search_results['Count'])
+    webenv = search_results['WebEnv']
+    query_key = search_results['QueryKey']
+    
+    print(f"Found {count} records")
+    
+    if count == 0:
+        print("No results found. Try adjusting your search criteria.")
+        sys.exit(0)
+    
+    # Fetch summaries in batches
+    all_summaries = []
+    batch_size = 500
+    total_to_fetch = min(count, args.max_results)
+    
+    # With API key, we can do 10 req/sec, so sleep 0.11 seconds
+    sleep_time = 0.11
+    
+    for start in range(0, total_to_fetch, batch_size):
+        end = min(start + batch_size, total_to_fetch)
+        print(f"Fetching records {start+1} to {end}...")
+        summaries = fetch_summaries(webenv, query_key, retstart=start, retmax=batch_size)
+        all_summaries.extend(summaries)
+        time.sleep(sleep_time)  # Rate limiting: 10 req/sec with API key
+    
+    # Save results
+    output_data = {
+        'organism': args.organism,
+        'query': query,
+        'total_count': count,
+        'retrieved_count': len(all_summaries),
+        'summaries': all_summaries
+    }
+    
+    with open(args.output, 'w') as f:
+        json.dump(output_data, f, indent=2)
+    
+    print(f"\nSuccess! Saved {len(all_summaries)} summaries to {args.output}")
+    print(f"Total matching records: {count}")
+
+if __name__ == "__main__":
+    main()

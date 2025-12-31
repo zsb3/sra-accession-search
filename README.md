@@ -15,6 +15,20 @@ This tool searches the NCBI Sequence Read Archive (SRA) for high-quality bacteri
 - 50-250x coverage range (estimated)
 - Recent data (2020-2025 by default)
 
+## For AI Agents 🤖
+
+**Quick Context:**
+- 2 main scripts: `search_sra.py` (fetch data) → `filter_metadata.py` (filter by coverage)
+- Test everything: `pytest tests/` (100% coverage required)
+- Format/lint: `black scripts/ tests/ && flake8 scripts/ tests/`
+- See [`.cursorrules`](.cursorrules) for detailed coding standards and patterns
+- Common tasks documented in [`.ai/prompts.md`](.ai/prompts.md)
+
+**Key Files:**
+- `scripts/filter_metadata.py::GENOME_SIZES` - organism genome size lookup
+- `tests/fixtures/` - mock API responses for testing
+- `.github/workflows/` - CI/CD configuration
+
 ## Target Organisms
 
 The project focuses on six bacterial genera of public health importance:
@@ -297,21 +311,126 @@ pre-commit install
 
 ## Troubleshooting
 
+### Search Issues
+
 **"No results found":**
-- Check organism name spelling
-- Try broader date range
-- Verify organism has SRA data available
+- **Check organism name spelling** - Use scientific name (e.g., "Listeria monocytogenes")
+- **Try broader date range** - Default is 2020:2025, try 2015:2025
+- **Verify SRA data exists** - Search NCBI SRA web interface first
+- **Check query construction** - Run with `-v` for verbose output to see actual query
 
-**Rate limiting errors:**
-- Ensure API key is set correctly
-- Check you're not running multiple instances simultaneously
+**Too many results / timeout:**
+- Use `--max-results` to limit (default: 5000)
+- Narrow date range
+- Be more specific with organism subspecies
 
-**Import errors:**
-- Verify all dependencies are installed: `pip install -r requirements.txt`
+### API Issues
 
-**GitHub Actions workflow push rejected:**
-- If you see "refusing to allow a Personal Access Token to create or update workflow", you need a token with `workflow` scope
-- Alternative: Create the workflow files directly on GitHub's web interface
+**Rate limiting errors (HTTP 429):**
+- **Add API key** - Without it, you're limited to 3 requests/second
+- **Don't run parallel searches** - NCBI rate limits per IP
+- **Wait and retry** - Rate limits reset after a few minutes
+
+**Connection errors:**
+- Check internet connection
+- NCBI services occasionally have outages - check https://www.ncbi.nlm.nih.gov/
+- Try again in a few minutes
+
+### Coverage Calculation Issues
+
+**Coverage seems wrong:**
+- **Check genome size** - Verify `GENOME_SIZES` dict has correct value for your organism
+- **Genus mismatch** - Uses first word of organism name as genus
+- **Unknown organism** - Defaults to 5 Mb, add specific size to `GENOME_SIZES`
+
+**No records after filtering:**
+- Coverage range too narrow - try wider range (e.g., 30-300x)
+- Bases data missing from SRA - some records lack this metadata
+- Check input file has `bases` column (CSV) or `Runs` field (JSON)
+
+### Testing Issues
+
+**Tests failing:**
+```bash
+# Run with verbose output
+pytest tests/ -v
+
+# Run specific test
+pytest tests/test_search_sra.py::TestBuildQuery::test_basic_query -v
+
+# Check coverage
+pytest tests/ --cov=scripts --cov-report=term-missing
+```
+
+**Import errors in tests:**
+- Ensure you're in project root directory
+- Check virtual environment is activated
+- Reinstall dependencies: `pip install -r requirements.txt`
+
+### Code Quality Issues
+
+**Black formatting fails:**
+```bash
+# See what would change
+black --check --diff scripts/ tests/
+
+# Apply changes
+black scripts/ tests/
+```
+
+**Flake8 errors:**
+- Check `.flake8` config for rules
+- Common: E501 (line too long), F401 (unused import)
+- Fix automatically where possible, or add `# noqa: <code>` with justification
+
+### Git/GitHub Issues
+
+**Workflow push rejected:**
+- If you see "refusing to allow a Personal Access Token to create or update workflow"
+- Need a token with `workflow` scope for `.github/workflows/` changes
+- See conditional git config in `~/.gitconfig` for token management
+
+**CI tests fail but pass locally:**
+- Different Python version - CI tests 3.10, 3.11, 3.12
+- Missing dependency in `requirements.txt`
+- Check GitHub Actions logs for specific error
+
+### Environment Issues
+
+**NCBI credentials not found:**
+```bash
+# Check environment variables
+echo $NCBI_EMAIL
+echo $NCBI_API_KEY
+
+# Check ~/.bashrc
+grep NCBI ~/.bashrc
+
+# Reload environment
+source ~/.bashrc
+```
+
+**Wrong Python version:**
+```bash
+# Check version
+python --version  # Should be 3.10+
+
+# Use specific version
+python3.11 -m pip install -r requirements.txt
+python3.11 scripts/search_sra.py ...
+```
+
+### Getting Help
+
+**Still stuck?**
+1. Check `.cursorrules` for project-specific patterns
+2. Look at existing tests for examples
+3. Review git history: `git log --oneline`
+4. Search issues on GitHub (if public repo)
+
+**For NCBI API questions:**
+- E-utilities documentation: https://www.ncbi.nlm.nih.gov/books/NBK25500/
+- SRA help: https://www.ncbi.nlm.nih.gov/sra/docs/
 
 ## License
 

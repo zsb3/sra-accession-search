@@ -1,0 +1,187 @@
+# SRA Accession Search - AI Assistant Rules
+
+## Project Overview
+Python tools for searching NCBI SRA database and filtering results by coverage and quality metrics.
+Target organisms: bacterial pathogens (Listeria, Salmonella, E. coli, etc.)
+
+## Code Style & Formatting
+
+### Black Formatter
+- **Line length**: 100 characters
+- Run `black scripts/ tests/` before committing
+- Configuration in `pyproject.toml`
+
+### Flake8 Linting
+- Max line length: 100
+- Configuration in `.flake8`
+- Use `# noqa: E402` only for imports after `sys.path` modification in tests
+- Run `flake8 scripts/ tests/` to verify
+
+### Import Organization
+```python
+# Standard library
+import json
+import sys
+
+# Third party
+import pandas as pd
+import pytest
+
+# Local (after sys.path in tests)
+from filter_metadata import calculate_coverage  # noqa: E402
+```
+
+## Testing Standards
+
+### Coverage Requirements
+- **100% code coverage required** - enforced in CI/CD
+- Run: `pytest tests/ --cov=scripts --cov-report=term-missing`
+- Update threshold in `pyproject.toml` if adding uncoverable code
+
+### Test Structure
+- Use pytest with fixtures (not class-based setup)
+- Mock ALL external API calls (Bio.Entrez, requests)
+- Use `io.BytesIO()` for mocking XML responses
+- Use `tempfile.NamedTemporaryFile` for test files, always clean up in finally block
+- Name tests: `test_<function>_<scenario>` (e.g., `test_calculate_coverage_listeria`)
+
+### Mocking Patterns
+```python
+# Mock NCBI API calls
+@patch('search_sra.Entrez.esearch')
+def test_search(mock_esearch):
+    xml_response = b'<?xml version="1.0"?>...'
+    mock_esearch.return_value = io.BytesIO(xml_response)
+    
+# Use tempfile for file operations
+with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    json.dump(data, f)
+    temp_file = f.name
+try:
+    # test code
+finally:
+    os.unlink(temp_file)
+```
+
+## Type Hints
+- Add type hints to ALL function signatures
+- Use standard library types where possible: `list[str]`, `dict[str, int]`
+- For complex returns, be explicit: `-> pd.DataFrame`
+
+```python
+def calculate_coverage(bases: int, genus: str) -> int:
+    """Calculate coverage with proper type hints."""
+    pass
+```
+
+## Documentation
+
+### Docstrings (Google Style)
+```python
+def function_name(param1: str, param2: int) -> bool:
+    """Brief description of function.
+    
+    More detailed explanation if needed.
+    
+    Args:
+        param1: Description of param1
+        param2: Description of param2
+        
+    Returns:
+        Description of return value
+        
+    Raises:
+        ValueError: When and why
+    """
+```
+
+## Project-Specific Patterns
+
+### GENOME_SIZES Dictionary
+- **Source of truth** for organism genome sizes (in Mb)
+- Located in `scripts/filter_metadata.py`
+- When adding new organism:
+  1. Find genome size from NCBI/literature
+  2. Add to dict with comment citing source
+  3. Use genus name as key (first word of scientific name)
+  
+```python
+GENOME_SIZES = {
+    "Listeria": 3.0,  # L. monocytogenes ~2.9-3.0 Mb
+    "NewGenus": 4.5,  # Source: NCBI genome assembly
+}
+```
+
+### SRA Query Construction
+- Always filter for: `PAIRED` layout + `ILLUMINA` platform + `WGS` strategy
+- Use `build_query()` function in `search_sra.py`
+- Date ranges in format: `YYYY:YYYY`
+
+### Coverage Calculation
+- Uses formula: `(bases / genome_size_Mb) / 1_000_000`
+- Results rounded to integers
+- Default range: 50-250x
+
+### Environment Variables
+- `NCBI_EMAIL` - required for NCBI API
+- `NCBI_API_KEY` - optional but recommended (avoids throttling)
+- Use `os.getenv()` with defaults in CLI args
+
+## Avoid These Patterns
+
+### Don't Do This
+- ❌ Real NCBI API calls in tests
+- ❌ Hardcoded file paths (use tempfile)
+- ❌ f-strings without placeholders (`f"text"` → `"text"`)
+- ❌ Unused imports or variables
+- ❌ Changing workflow files without workflow-scoped token
+- ❌ Adding dependencies without discussing necessity
+- ❌ Breaking changes to public function signatures
+
+### Do This Instead
+- ✅ Mock all external APIs
+- ✅ Use tempfile with cleanup
+- ✅ Regular strings when no interpolation
+- ✅ Remove unused code
+- ✅ Test workflow changes locally first
+- ✅ Use standard library when possible
+- ✅ Deprecate old signatures before removing
+
+## Dependencies
+Current stack (avoid unnecessary additions):
+- **Core**: biopython, pandas, requests
+- **Testing**: pytest, pytest-cov, pytest-mock
+- **Quality**: black, flake8
+- **Python**: 3.10, 3.11, 3.12 (tested in CI)
+
+## Git Workflow
+- Main branch: `main`
+- CI runs on every push (test.yml)
+- 100% coverage enforced in CI
+- Pre-commit hooks available: `pre-commit install`
+
+## Common Tasks
+
+### Add New Organism Support
+1. Add to GENOME_SIZES dict with source
+2. Add test case in `test_calculate_coverage`
+3. Run tests to verify coverage maintained
+
+### Add New Filter Criteria
+1. Add parameter to `filter_metadata()` function
+2. Add CLI argument in `main()`
+3. Add test for new filter
+4. Update README usage section
+
+### Fix Linting Issues
+```bash
+black scripts/ tests/           # Auto-format
+flake8 scripts/ tests/          # Check for issues
+pytest tests/                   # Verify tests pass
+```
+
+## When in Doubt
+- Check existing patterns in codebase
+- Maintain 100% test coverage
+- Run `black && flake8 && pytest` before committing
+- If adding complexity, document why in code comments

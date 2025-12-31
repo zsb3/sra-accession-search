@@ -34,28 +34,52 @@ def calculate_coverage(bases, organism_genus):
     genome_size = GENOME_SIZES.get(organism_genus, None)
     if genome_size is None:
         return None
-    return bases / genome_size
+    return round(bases / genome_size)
 
 def extract_summary_data(summaries):
     """Extract relevant fields from SRA summaries."""
+    import re
     records = []
     
     for summary in summaries:
         # Handle different summary structures
         if isinstance(summary, dict):
-            # Extract key fields from summary
+            # Parse Runs XML field to extract accession and bases
+            runs_xml = summary.get('Runs', '')
+            accession = ''
+            bases = 0
+            
+            if runs_xml:
+                # Extract accession (e.g., SRR36637329)
+                acc_match = re.search(r'acc="([^"]+)"', runs_xml)
+                if acc_match:
+                    accession = acc_match.group(1)
+                
+                # Extract total bases
+                bases_match = re.search(r'total_bases="([^"]+)"', runs_xml)
+                if bases_match:
+                    try:
+                        bases = int(bases_match.group(1))
+                    except ValueError:
+                        bases = 0
+            
+            # Extract title from ExpXml
+            title = ''
+            exp_xml = summary.get('ExpXml', '')
+            if exp_xml:
+                title_match = re.search(r'<Title>([^<]+)</Title>', exp_xml)
+                if title_match:
+                    title = title_match.group(1)
+            
+            # Build record
             record = {
-                'Accession': summary.get('Acc', ''),
-                'Title': summary.get('Title', ''),
+                'Accession': accession,
+                'Title': title,
                 'CreateDate': summary.get('CreateDate', ''),
                 'UpdateDate': summary.get('UpdateDate', ''),
+                'Runs': runs_xml,
+                'bases': bases
             }
-            
-            # Try to extract run info if available
-            runs = summary.get('Runs', '')
-            if runs:
-                # Parse runs field - format varies
-                record['Runs'] = runs
             
             records.append(record)
     
@@ -217,10 +241,10 @@ def main():
     # Print summary statistics if coverage available
     if 'Estimated_Coverage' in filtered_df.columns:
         print("\nCoverage Statistics:")
-        print(f"  Mean: {filtered_df['Estimated_Coverage'].mean():.1f}x")
-        print(f"  Median: {filtered_df['Estimated_Coverage'].median():.1f}x")
-        print(f"  Min: {filtered_df['Estimated_Coverage'].min():.1f}x")
-        print(f"  Max: {filtered_df['Estimated_Coverage'].max():.1f}x")
+        print(f"  Mean: {int(round(filtered_df['Estimated_Coverage'].mean()))}x")
+        print(f"  Median: {int(round(filtered_df['Estimated_Coverage'].median()))}x")
+        print(f"  Min: {int(filtered_df['Estimated_Coverage'].min())}x")
+        print(f"  Max: {int(filtered_df['Estimated_Coverage'].max())}x")
 
 if __name__ == "__main__":
     main()

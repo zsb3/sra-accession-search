@@ -20,3 +20,18 @@ omit = ["*/tests/*", "venv/*"]
 precision = 2
 show_missing = true
 skip_covered = false
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+)/
+'''

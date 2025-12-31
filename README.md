@@ -255,7 +255,8 @@ The project uses GitHub Actions for continuous integration:
 **Test Workflow** (`.github/workflows/test.yml`):
 - Runs on every push and pull request
 - Tests across Python 3.10, 3.11, and 3.12
-- Enforces 85% minimum code coverage
+- Enforces 100% code coverage
+- Code quality checks with black and flake8
 - Includes optional integration tests (requires NCBI secrets)
 - Uploads coverage reports and artifacts
 
@@ -266,6 +267,8 @@ The project uses GitHub Actions for continuous integration:
 
 ### Code Quality
 
+The project uses **black** for code formatting and **flake8** for linting.
+
 ```bash
 # Check code formatting
 black --check scripts/ tests/
@@ -275,6 +278,21 @@ black scripts/ tests/
 
 # Lint code
 flake8 scripts/ tests/
+
+# Run all quality checks
+black scripts/ tests/ && flake8 scripts/ tests/
+```
+
+**Configuration:**
+- Black: 100 character line length (configured in `pyproject.toml`)
+- Flake8: Rules in `.flake8` file
+- Pre-commit hooks available in `.pre-commit-config.yaml`
+
+**Setup pre-commit hooks** (optional):
+```bash
+pip install pre-commit
+pre-commit install
+# Now black and flake8 will run automatically on git commit
 ```
 
 ## Troubleshooting

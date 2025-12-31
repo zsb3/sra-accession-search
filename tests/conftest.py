@@ -11,8 +11,6 @@ Fixture Categories:
 """
 
 import json
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -35,9 +33,7 @@ def mock_sra_summary_listeria():
     """
     return {
         "Runs": '<Run acc="SRR12345" total_bases="300000000"/>',
-        "ExpXml": (
-            "<Summary><Title>WGS of Listeria monocytogenes</Title></Summary>"
-        ),
+        "ExpXml": ("<Summary><Title>WGS of Listeria monocytogenes</Title></Summary>"),
         "CreateDate": "2024/01/15",
         "UpdateDate": "2024/01/15",
     }
@@ -83,9 +79,7 @@ def mock_sra_summaries_batch():
     return [
         {
             "Runs": '<Run acc="SRR12345" total_bases="300000000"/>',
-            "ExpXml": (
-                "<Summary><Title>Listeria monocytogenes WGS</Title></Summary>"
-            ),
+            "ExpXml": ("<Summary><Title>Listeria monocytogenes WGS</Title></Summary>"),
             "CreateDate": "2024/01/15",
             "UpdateDate": "2024/01/15",
         },
@@ -214,9 +208,7 @@ def temp_json_file(tmp_path):
         "summaries": [
             {
                 "Runs": '<Run acc="SRR12345" total_bases="300000000"/>',
-                "ExpXml": (
-                    "<Summary><Title>Listeria WGS</Title></Summary>"
-                ),
+                "ExpXml": ("<Summary><Title>Listeria WGS</Title></Summary>"),
                 "CreateDate": "2024/01/15",
                 "UpdateDate": "2024/01/15",
             },

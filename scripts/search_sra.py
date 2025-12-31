@@ -15,9 +15,10 @@ import json
 import os
 import sys
 import time
+from typing import Any
 
 
-def search_sra(query, retmax=5000):
+def search_sra(query: str, retmax: int = 5000) -> dict[str, Any]:
     """Search SRA database and return list of UIDs"""
     handle = Entrez.esearch(db="sra", term=query, retmax=retmax, usehistory="y")
     results = Entrez.read(handle)
@@ -25,7 +26,9 @@ def search_sra(query, retmax=5000):
     return results
 
 
-def fetch_summaries(webenv, query_key, retstart=0, retmax=500):
+def fetch_summaries(
+    webenv: str, query_key: str, retstart: int = 0, retmax: int = 500
+) -> list[dict[str, Any]]:
     """Fetch summaries for search results"""
     handle = Entrez.esummary(
         db="sra", query_key=query_key, WebEnv=webenv, retstart=retstart, retmax=retmax
@@ -35,7 +38,7 @@ def fetch_summaries(webenv, query_key, retstart=0, retmax=500):
     return results
 
 
-def get_runinfo(accessions):
+def get_runinfo(accessions: list[str] | str) -> str:
     """Get RunInfo CSV for accessions"""
     import requests
 
@@ -47,7 +50,7 @@ def get_runinfo(accessions):
     return response.text
 
 
-def build_query(organism, date_range="2020:2025"):
+def build_query(organism: str, date_range: str = "2020:2025") -> str:
     """Build SRA search query for paired-end Illumina WGS data"""
     parts = [
         f'"{organism}"[Organism]',
@@ -60,7 +63,7 @@ def build_query(organism, date_range="2020:2025"):
     return query
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Search NCBI SRA for bacterial paired-end Illumina WGS data",
         formatter_class=argparse.RawDescriptionHelpFormatter,

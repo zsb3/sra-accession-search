@@ -18,9 +18,10 @@ import argparse
 import pandas as pd
 import sys
 from pathlib import Path
+from typing import Any
 
 # Genome sizes (in bases) for coverage calculation
-GENOME_SIZES = {
+GENOME_SIZES: dict[str, int] = {
     "Salmonella": 4_800_000,
     "Escherichia": 5_000_000,
     "Listeria": 3_000_000,
@@ -30,7 +31,7 @@ GENOME_SIZES = {
 }
 
 
-def calculate_coverage(bases, organism_genus):
+def calculate_coverage(bases: int, organism_genus: str) -> int | None:
     """Calculate estimated coverage from total bases and genome size."""
     genome_size = GENOME_SIZES.get(organism_genus, None)
     if genome_size is None:
@@ -38,7 +39,7 @@ def calculate_coverage(bases, organism_genus):
     return round(bases / genome_size)
 
 
-def extract_summary_data(summaries):
+def extract_summary_data(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Extract relevant fields from SRA summaries."""
     import re
 
@@ -89,7 +90,7 @@ def extract_summary_data(summaries):
     return records
 
 
-def parse_json_metadata(json_file):
+def parse_json_metadata(json_file: str | Path) -> pd.DataFrame:
     """Parse JSON metadata file from search_sra.py output."""
     with open(json_file, "r") as f:
         data = json.load(f)
@@ -110,7 +111,7 @@ def parse_json_metadata(json_file):
     return df
 
 
-def parse_csv_metadata(csv_file):
+def parse_csv_metadata(csv_file: str | Path) -> pd.DataFrame:
     """Parse CSV metadata (RunInfo format from SRA)."""
     df = pd.read_csv(csv_file)
 
@@ -123,7 +124,12 @@ def parse_csv_metadata(csv_file):
     return df
 
 
-def filter_metadata(df, min_coverage=50, max_coverage=250, preferred_instruments=None):
+def filter_metadata(
+    df: pd.DataFrame,
+    min_coverage: float = 50,
+    max_coverage: float = 250,
+    preferred_instruments: list[str] | None = None,
+) -> pd.DataFrame:
     """Filter metadata based on quality criteria."""
 
     if df.empty:
@@ -161,7 +167,7 @@ def filter_metadata(df, min_coverage=50, max_coverage=250, preferred_instruments
     return df
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Filter SRA metadata based on coverage and quality criteria",
         formatter_class=argparse.RawDescriptionHelpFormatter,

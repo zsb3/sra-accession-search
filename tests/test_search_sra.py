@@ -330,7 +330,7 @@ def test_module_execution():
 
     env_vars = {"NCBI_EMAIL": "test@example.com", "NCBI_API_KEY": "testkey"}
     with patch.dict(os.environ, env_vars):
-        with patch("search_sra.Entrez.esearch") as mock_esearch:
+        with patch("search_sra.Entrez.esearch"):
             with patch("search_sra.Entrez.read") as mock_read:
                 # Mock the search to return 0 results
                 mock_read.return_value = {"Count": "0", "WebEnv": "test", "QueryKey": "1"}

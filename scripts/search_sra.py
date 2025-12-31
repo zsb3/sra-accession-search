@@ -127,8 +127,9 @@ def main():
     
     for start in range(0, total_to_fetch, batch_size):
         end = min(start + batch_size, total_to_fetch)
+        records_to_fetch = end - start  # Fetch only the number we need
         print(f"Fetching records {start+1} to {end}...")
-        summaries = fetch_summaries(webenv, query_key, retstart=start, retmax=batch_size)
+        summaries = fetch_summaries(webenv, query_key, retstart=start, retmax=records_to_fetch)
         all_summaries.extend(summaries)
         time.sleep(sleep_time)  # Rate limiting: 10 req/sec with API key
     

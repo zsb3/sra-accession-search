@@ -1,0 +1,22 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=scripts",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=85"
+]
+
+[tool.coverage.run]
+source = ["scripts"]
+omit = ["*/tests/*", "venv/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false

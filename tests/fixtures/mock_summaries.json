@@ -1,0 +1,16 @@
+[
+  {
+    "Id": "42283700",
+    "ExpXml": "<Summary><Title>Paired-end sequencing of Listeria monocytogenes</Title><Platform instrument_model=\"Illumina MiSeq\"/></Summary>",
+    "Runs": "<Run acc=\"SRR36637329\" total_spots=\"647085\" total_bases=\"313617513\" load_done=\"true\" is_public=\"true\" cluster_name=\"public\" static_data_available=\"true\"/>",
+    "CreateDate": "2025/12/30",
+    "UpdateDate": "2025/12/30"
+  },
+  {
+    "Id": "42283701",
+    "ExpXml": "<Summary><Title>WGS of Campylobacter jejuni</Title><Platform instrument_model=\"Illumina NovaSeq\"/></Summary>",
+    "Runs": "<Run acc=\"SRR12345678\" total_spots=\"500000\" total_bases=\"150000000\" load_done=\"true\" is_public=\"true\" cluster_name=\"public\" static_data_available=\"true\"/>",
+    "CreateDate": "2025/12/25",
+    "UpdateDate": "2025/12/25"
+  }
+]

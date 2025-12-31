@@ -40,3 +40,8 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 TESTING_STRATEGY.md
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/

@@ -1,6 +1,8 @@
 """Unit tests for filter_metadata.py"""
 
 import json
+import os
+import runpy
 import sys
 from pathlib import Path
 from unittest.mock import patch, mock_open
@@ -338,7 +340,80 @@ class TestFilterMetadata:
         filtered = filter_metadata(df, min_coverage=50, max_coverage=150)
         
         # Both should pass (100x coverage each)
+    
+    def test_filter_by_library_layout(self):
+        """Test filtering by LibraryLayout column"""
+        df = pd.DataFrame({
+            'Accession': ['SRR001', 'SRR002', 'SRR003'],
+            'bases': [300_000_000, 300_000_000, 300_000_000],
+            'Genus': ['Listeria', 'Listeria', 'Listeria'],
+            'LibraryLayout': ['PAIRED', 'SINGLE', 'PAIRED']
+        })
+        
+        filtered = filter_metadata(df)
+        
+        # Should only keep PAIRED layouts
         assert len(filtered) == 2
+        assert all(filtered['LibraryLayout'] == 'PAIRED')
+    
+    def test_filter_by_platform(self):
+        """Test filtering by Platform column"""
+        df = pd.DataFrame({
+            'Accession': ['SRR001', 'SRR002', 'SRR003'],
+            'bases': [300_000_000, 300_000_000, 300_000_000],
+            'Genus': ['Listeria', 'Listeria', 'Listeria'],
+            'Platform': ['ILLUMINA', 'PACBIO_SMRT', 'ILLUMINA']
+        })
+        
+        filtered = filter_metadata(df)
+        
+        # Should only keep ILLUMINA platform
+        assert len(filtered) == 2
+        assert all(filtered['Platform'] == 'ILLUMINA')
+    
+    def test_filter_by_preferred_instruments(self):
+        """Test filtering by preferred instrument models"""
+        df = pd.DataFrame({
+            'Accession': ['SRR001', 'SRR002', 'SRR003'],
+            'bases': [300_000_000, 300_000_000, 300_000_000],
+            'Genus': ['Listeria', 'Listeria', 'Listeria'],
+            'Model': ['Illumina MiSeq', 'Illumina HiSeq 2500', 'Illumina NovaSeq 6000']
+        })
+        
+        filtered = filter_metadata(df, preferred_instruments=['Illumina MiSeq', 'Illumina NovaSeq 6000'])
+        
+        # Should only keep MiSeq and NovaSeq
+        assert len(filtered) == 2
+        assert 'SRR002' not in filtered['Accession'].values
+    
+    def test_sort_by_estimated_coverage(self):
+        """Test sorting by Estimated_Coverage when available"""
+        df = pd.DataFrame({
+            'Accession': ['SRR001', 'SRR002', 'SRR003'],
+            'bases': [150_000_000, 450_000_000, 300_000_000],
+            'Genus': ['Listeria', 'Listeria', 'Listeria']
+        })
+        
+        filtered = filter_metadata(df)
+        
+        # Should be sorted by coverage (highest first)
+        assert filtered.iloc[0]['Accession'] == 'SRR002'  # 150x
+        assert filtered.iloc[1]['Accession'] == 'SRR003'  # 100x
+        assert filtered.iloc[2]['Accession'] == 'SRR001'  # 50x
+    
+    def test_sort_by_release_date_when_no_coverage(self):
+        """Test sorting by ReleaseDate when Estimated_Coverage not in dataframe"""
+        df = pd.DataFrame({
+            'Accession': ['SRR001', 'SRR002', 'SRR003'],
+            'ReleaseDate': ['2023-01-15', '2023-12-01', '2023-06-30']
+        })
+        
+        filtered = filter_metadata(df)
+        
+        # Should be sorted by date (most recent first)
+        assert filtered.iloc[0]['Accession'] == 'SRR002'  # 2023-12-01
+        assert filtered.iloc[1]['Accession'] == 'SRR003'  # 2023-06-30
+        assert filtered.iloc[2]['Accession'] == 'SRR001'  # 2023-01-15
     
     def test_coverage_calculated_correctly(self):
         """Test that coverage is calculated and added to dataframe"""
@@ -375,11 +450,66 @@ class TestMainFunction:
         # Verify to_csv was called
         mock_to_csv.assert_called_once()
     
+    @patch('filter_metadata.pd.DataFrame.to_csv')
+    def test_main_with_csv_input(self, mock_to_csv):
+        """Test main function with CSV input"""
+        import tempfile
+        
+        # Create a temporary CSV file with test data
+        csv_data = """Run,ScientificName,Bases
+SRR001,Listeria monocytogenes,300000000
+SRR002,Listeria monocytogenes,450000000"""
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_data)
+            csv_file = f.name
+        
+        try:
+            with patch('sys.argv', [
+                'filter_metadata.py',
+                '--input', csv_file,
+                '--output', 'test_output.csv',
+                '--min-coverage', '50',
+                '--max-coverage', '250'
+            ]):
+                from filter_metadata import main
+                main()
+            
+            # Verify to_csv was called
+            mock_to_csv.assert_called_once()
+        finally:
+            import os
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
     def test_main_unsupported_file_type(self):
         """Test main function exits with unsupported file type"""
+        # Create a temporary .txt file to trigger the error
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("test content")
+            txt_file = f.name
+        
+        try:
+            with patch('sys.argv', [
+                'filter_metadata.py',
+                '--input', txt_file,
+                '--output', 'output.csv'
+            ]):
+                from filter_metadata import main
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 1
+        finally:
+            # Clean up
+            import os
+            if os.path.exists(txt_file):
+                os.unlink(txt_file)
+    
+    def test_main_file_not_found(self):
+        """Test main function exits when input file doesn't exist"""
         with patch('sys.argv', [
             'filter_metadata.py',
-            '--input', 'test.txt',
+            '--input', '/nonexistent/file.json',
             '--output', 'output.csv'
         ]):
             from filter_metadata import main
@@ -419,3 +549,84 @@ class TestMainFunction:
                 with pytest.raises(SystemExit) as exc_info:
                     main()
                 assert exc_info.value.code == 0
+    
+    def test_main_empty_json_file(self):
+        """Test main function with empty JSON file (no summaries)"""
+        import tempfile
+        
+        # Create mock data with empty summaries list
+        mock_data = {
+            'organism': 'Listeria monocytogenes',
+            'query': 'test',
+            'total_count': 0,
+            'retrieved_count': 0,
+            'summaries': []
+        }
+        
+        # Create a temporary JSON file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(mock_data, f)
+            json_file = f.name
+        
+        try:
+            with patch('sys.argv', [
+                'filter_metadata.py',
+                '--input', json_file,
+                '--output', 'output.csv'
+            ]):
+                from filter_metadata import main
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 0
+        finally:
+            # Clean up
+            import os
+            if os.path.exists(json_file):
+                os.unlink(json_file)
+
+
+def test_module_execution():
+    """Test that the module can be executed as __main__"""
+    # This ensures the if __name__ == "__main__": line is covered
+    import runpy
+    import tempfile
+    
+    # Create a temporary JSON file with test data
+    mock_data = {
+        'organism': 'Listeria monocytogenes',
+        'query': 'test',
+        'total_count': 1,
+        'retrieved_count': 1,
+        'summaries': [{
+            'Runs': '<Run acc="SRR123" total_bases="300000000"/>',
+            'ExpXml': '<Summary><Title>Test</Title></Summary>',
+            'CreateDate': '2025/12/31',
+            'UpdateDate': '2025/12/31'
+        }]
+    }
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as infile:
+        json.dump(mock_data, infile)
+        input_file = infile.name
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as outfile:
+        output_file = outfile.name
+    
+    try:
+        with patch('sys.argv', [
+            'filter_metadata.py',
+            '--input', input_file,
+            '--output', output_file
+        ]):
+            # Use runpy to execute the module as __main__
+            # This will trigger the if __name__ == "__main__": block
+            runpy.run_module('scripts.filter_metadata', run_name='__main__')
+    except SystemExit:
+        # Expected to exit successfully
+        pass
+    finally:
+        import os
+        for f in [input_file, output_file]:
+            if os.path.exists(f):
+                os.unlink(f)
+

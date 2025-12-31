@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import runpy
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch, mock_open
@@ -226,3 +227,65 @@ class TestMainFunction:
                 with pytest.raises(SystemExit) as exc_info:
                     main()
                 assert exc_info.value.code == 0
+
+
+class TestGetRunInfo:
+    """Test get_runinfo function"""
+    
+    @patch('requests.get')
+    def test_get_runinfo_single_accession(self, mock_get):
+        """Test get_runinfo with a single accession"""
+        from search_sra import get_runinfo
+        
+        mock_response = MagicMock()
+        mock_response.text = "Run,Bases\nSRR123,100000000"
+        mock_get.return_value = mock_response
+        
+        result = get_runinfo('SRR123')
+        
+        assert result == "Run,Bases\nSRR123,100000000"
+        mock_get.assert_called_once()
+    
+    @patch('requests.get')
+    def test_get_runinfo_multiple_accessions(self, mock_get):
+        """Test get_runinfo with multiple accessions"""
+        from search_sra import get_runinfo
+        
+        mock_response = MagicMock()
+        mock_response.text = "Run,Bases\nSRR123,100000000\nSRR124,200000000"
+        mock_get.return_value = mock_response
+        
+        result = get_runinfo(['SRR123', 'SRR124'])
+        
+        assert "SRR123" in result
+        assert "SRR124" in result
+        # Verify the URL contains comma-separated accessions
+        call_args = mock_get.call_args[0][0]
+        assert 'SRR123,SRR124' in call_args
+
+
+def test_module_execution():
+    """Test that the module can be executed as __main__"""
+    # This ensures the if __name__ == "__main__": line is covered
+    import runpy
+    import os
+    
+    with patch.dict(os.environ, {'NCBI_EMAIL': 'test@example.com', 'NCBI_API_KEY': 'testkey'}):
+        with patch('search_sra.Entrez.esearch') as mock_esearch:
+            with patch('search_sra.Entrez.read') as mock_read:
+                # Mock the search to return 0 results
+                mock_read.return_value = {'Count': '0', 'WebEnv': 'test', 'QueryKey': '1'}
+                
+                with patch('sys.argv', [
+                    'search_sra.py',
+                    '--organism', 'Test',
+                    '--output', 'test_output.json'
+                ]):
+                    try:
+                        # Use runpy to execute the module as __main__
+                        # This will trigger the if __name__ == "__main__": block
+                        runpy.run_module('scripts.search_sra', run_name='__main__')
+                    except SystemExit:
+                        # Expected to exit when no results found
+                        pass
+

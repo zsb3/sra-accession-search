@@ -9,7 +9,7 @@ addopts = [
     "--cov=scripts",
     "--cov-report=term-missing",
     "--cov-report=html",
-    "--cov-fail-under=85"
+    "--cov-fail-under=100"
 ]
 
 [tool.coverage.run]

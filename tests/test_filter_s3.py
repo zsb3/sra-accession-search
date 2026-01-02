@@ -6,7 +6,7 @@ import runpy
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pandas as pd
 
@@ -14,6 +14,13 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from filter_metadata import construct_s3_path, verify_s3_path, filter_metadata  # noqa: E402
+
+
+# Helper function to mock tqdm.pandas
+def mock_tqdm_pandas(*args, **kwargs):
+    """Mock tqdm.pandas to make progress_apply use regular apply"""
+    pd.Series.progress_apply = pd.Series.apply
+    pd.DataFrame.progress_apply = pd.DataFrame.apply
 
 
 # =============================================================================
@@ -262,14 +269,16 @@ class TestS3Integration:
         with patch("scripts.filter_metadata.verify_s3_path") as mock_verify:
             # First accession exists, second doesn't
             mock_verify.side_effect = lambda path: "SRR36650731" in path
-
-            result = fm(
-                test_data,
-                min_coverage=50,
-                max_coverage=150,
-                preferred_instruments=None,
-                verify_s3=True,
-            )
+            
+            # Mock tqdm.pandas to make progress_apply just use apply
+            with patch("scripts.filter_metadata.tqdm.pandas", side_effect=mock_tqdm_pandas):
+                result = fm(
+                    test_data,
+                    min_coverage=50,
+                    max_coverage=150,
+                    preferred_instruments=None,
+                    verify_s3=True,
+                )
 
             # Should only have one record
             assert len(result) == 1
@@ -312,7 +321,8 @@ class TestS3Integration:
                 ],
             ):
                 with patch("filter_metadata.verify_s3_path", return_value=True):
-                    runpy.run_module("scripts.filter_metadata", run_name="__main__")
+                    with patch("scripts.filter_metadata.tqdm.pandas", side_effect=mock_tqdm_pandas):
+                        runpy.run_module("scripts.filter_metadata", run_name="__main__")
 
             # Verify output file was created and has S3 path
             df = pd.read_csv(output_file)

@@ -916,6 +916,57 @@ class TestS3Integration:
         assert result["s3_path"].iloc[0] == "s3://sra-pub-run-odp/sra/SRR36650731/SRR36650731"
         assert result["s3_path"].iloc[1] == "s3://sra-pub-run-odp/sra/SRR36650732/SRR36650732"
 
+    def test_filter_metadata_boto3_not_available(self):
+        """Test filter_metadata when boto3 is not available"""
+        test_data = pd.DataFrame(
+            {
+                "Accession": ["SRR36650731"],
+                "BioProject": ["PRJNA123"],
+                "Title": ["Test 1"],
+                "CreateDate": ["2025/12/31"],
+                "UpdateDate": ["2025/12/31"],
+                "Runs": ["<Run/>"],
+                "bases": [480_000_000],
+                "Organism": ["Salmonella enterica"],
+                "Genus": ["Salmonella"],
+                "Estimated_Coverage": [100],
+            }
+        )
+
+        # Mock BOTO3_AVAILABLE as False to simulate boto3 not installed
+        import scripts.filter_metadata as fm_module
+        original_boto3_available = fm_module.BOTO3_AVAILABLE
+
+        try:
+            fm_module.BOTO3_AVAILABLE = False
+            
+            import io
+            import sys
+            captured_output = io.StringIO()
+            sys.stdout = captured_output
+
+            result = fm_module.filter_metadata(
+                test_data,
+                min_coverage=50,
+                max_coverage=150,
+                verify_s3=True,  # Request verification but boto3 not available
+            )
+
+            sys.stdout = sys.__stdout__
+            output = captured_output.getvalue()
+
+            # Should still return data with S3 paths
+            assert len(result) == 1
+            assert "s3_path" in result.columns
+
+            # Should print warnings
+            assert "Warning: boto3 not installed" in output
+            assert "Skipping S3 verification" in output
+
+        finally:
+            # Restore original value
+            fm_module.BOTO3_AVAILABLE = original_boto3_available
+
     def test_filter_metadata_with_s3_verification(self):
         """Test that filter_metadata with S3 verification filters correctly"""
         test_data = pd.DataFrame(

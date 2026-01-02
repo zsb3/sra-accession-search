@@ -30,7 +30,7 @@ try:
     from botocore.exceptions import ClientError, NoCredentialsError
 
     BOTO3_AVAILABLE = True
-except ImportError:
+except ImportError:  # pragma: no cover
     BOTO3_AVAILABLE = False
 
 # Genome sizes (in bases) for coverage calculation

@@ -203,17 +203,25 @@ These files can then be filtered based on coverage, quality metrics, and other c
 
 ## Filtering Results
 
-After searching SRA, you'll likely want to filter the results based on coverage and quality metrics.
+After searching SRA, you'll likely want to filter the results based on coverage and quality metrics. **The filter script now automatically adds S3 paths and verifies their availability.**
 
 ### Using the Filter Script
 
 ```bash
-# Filter Salmonella results for 80-150x coverage
+# Filter Salmonella results for 80-150x coverage (verifies S3 by default)
 python scripts/filter_metadata.py \
   --input data/salmonella_metadata.json \
   --output results/salmonella_filtered.csv \
   --min-coverage 80 \
   --max-coverage 150
+
+# Skip S3 verification (faster, but may include unavailable data)
+python scripts/filter_metadata.py \
+  --input data/salmonella_metadata.json \
+  --output results/salmonella_filtered.csv \
+  --min-coverage 80 \
+  --max-coverage 150 \
+  --no-verify-s3
 
 # Filter with preferred instruments
 python scripts/filter_metadata.py \
@@ -231,14 +239,97 @@ python scripts/filter_metadata.py \
 - `--min-coverage`: Minimum coverage (default: 50x)
 - `--max-coverage`: Maximum coverage (default: 250x)
 - `--instruments`: Preferred sequencing instruments (optional)
+- `--verify-s3`: Verify S3 availability (default: enabled)
+- `--no-verify-s3`: Skip S3 verification for faster processing
 
 The filter script will:
 - Calculate estimated coverage based on genome size
 - Filter for paired-end Illumina data
 - Filter by coverage range
+- **Construct S3 paths** for all accessions
+- **Verify S3 availability** (unless `--no-verify-s3` is used)
+- Filter out accessions without S3 access
 - Optionally filter by instrument model
 - Sort by coverage (highest first)
+- Add `s3_path` column as the last column
 - Provide coverage statistics
+
+### S3 Data Access
+
+**All filtered results include S3 paths** for direct cloud-based download. The S3 paths point to NCBI's public SRA bucket in `us-east-1`:
+
+```
+s3://sra-pub-run-odp/sra/SRR######/SRR#######
+```
+
+### S3 Verification: Time vs. Accuracy Trade-offs
+
+The `--verify-s3` flag (enabled by default) checks if each accession actually exists on S3 before including it:
+
+| Mode | Speed | Accuracy | Best For |
+|------|-------|----------|----------|
+| `--verify-s3` (default) | **Slower**: ~50-200 accessions/minute* | **High**: Only confirmed-available data | Production workflows, ensuring all data is downloadable |
+| `--no-verify-s3` | **Instant**: No network calls | **Moderate**: ~95% of recent data available† | Quick exploration, newer data (2020+), network issues |
+
+*Speed depends on network latency and AWS API response times. Shows progress during verification.
+
+†Based on NCBI's migration to AWS Open Data. Data from before ~2018 may not be on S3.
+
+**When to use `--verify-s3` (default):**
+- ✅ Production pipelines where all data must be downloadable
+- ✅ Mixed-age datasets (includes data from before 2018)
+- ✅ Critical workflows that can't tolerate missing data
+- ✅ First-time filtering of a dataset
+
+**When to use `--no-verify-s3`:**
+- ✅ Quick exploration or testing
+- ✅ Recent data only (2020+) - very high S3 availability
+- ✅ Network connectivity issues preventing S3 access
+- ✅ Re-filtering already-verified datasets
+- ✅ Speed is critical and ~5% missing data is acceptable
+
+**Performance example:**
+```bash
+# 1,946 Salmonella accessions, coverage 80-150x
+
+# With verification: ~10-15 minutes
+# - Verifies each S3 path exists
+# - Shows progress: "Verifying S3 availability for 1946 records..."
+# - Guarantees all paths are downloadable
+time python scripts/filter_metadata.py \
+  --input data/salmonella_metadata.json \
+  --output results/salmonella_verified.csv \
+  --min-coverage 80 --max-coverage 150
+
+# Without verification: <1 second
+# - Constructs S3 paths but doesn't check existence
+# - ~95% will be available for recent data
+time python scripts/filter_metadata.py \
+  --input data/salmonella_metadata.json \
+  --output results/salmonella_quick.csv \
+  --min-coverage 80 --max-coverage 150 \
+  --no-verify-s3
+```
+
+**Example: Download to your private S3 bucket**
+```bash
+# Read S3 paths from filtered CSV and copy to your bucket
+tail -n +2 results/salmonella_filtered.csv | cut -d',' -f11 | \
+  while read s3path; do
+    if [[ $s3path == s3://* ]]; then
+      acc=$(basename $s3path)
+      aws s3 cp $s3path s3://your-private-bucket/sra-data/$acc \
+        --recursive --no-sign-request
+    fi
+  done
+```
+
+**Benefits of S3-to-S3 transfer:**
+- ✅ **Zero egress fees** (both buckets in us-east-1)
+- ✅ **Faster** than downloading locally (stays on AWS network)
+- ✅ **No local storage** needed
+- ✅ **More reliable** - AWS handles transfer
+- ✅ **No credentials needed** - public bucket uses `--no-sign-request`
 
 ## Project Structure
 

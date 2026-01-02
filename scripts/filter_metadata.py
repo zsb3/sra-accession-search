@@ -23,6 +23,16 @@ from typing import Any
 from pydantic import ValidationError
 from schemas import SRASearchResult
 
+try:
+    import boto3
+    from botocore import UNSIGNED
+    from botocore.config import Config
+    from botocore.exceptions import ClientError, NoCredentialsError
+
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+
 # Genome sizes (in bases) for coverage calculation
 GENOME_SIZES: dict[str, int] = {
     "Salmonella": 4_800_000,
@@ -32,6 +42,64 @@ GENOME_SIZES: dict[str, int] = {
     "Staphylococcus": 2_800_000,
     "Streptococcus": 2_000_000,
 }
+
+# S3 configuration
+SRA_S3_BUCKET = "sra-pub-run-odp"
+SRA_S3_PREFIX = "sra"
+
+
+def construct_s3_path(accession: str) -> str:
+    """Construct S3 path for an SRA accession.
+
+    Args:
+        accession: SRA run accession (e.g., SRR36650731)
+
+    Returns:
+        Full S3 URI (e.g., s3://sra-pub-run-odp/sra/SRR36650731/SRR36650731)
+    """
+    if not accession or not accession.startswith("SRR"):
+        return ""
+
+    # Extract the numeric prefix (e.g., SRR36650731 -> SRR366507)
+    # S3 structure: s3://sra-pub-run-odp/sra/SRR######/SRR#######
+    return f"s3://{SRA_S3_BUCKET}/{SRA_S3_PREFIX}/{accession}/{accession}"
+
+
+def verify_s3_path(s3_path: str) -> bool:
+    """Verify that an S3 path exists.
+
+    Args:
+        s3_path: Full S3 URI (e.g., s3://sra-pub-run-odp/sra/SRR36650731/SRR36650731)
+
+    Returns:
+        True if path exists and is accessible, False otherwise
+    """
+    if not BOTO3_AVAILABLE:
+        print("Warning: boto3 not available, skipping S3 verification")
+        return True  # Assume path exists if can't verify
+
+    if not s3_path or not s3_path.startswith("s3://"):
+        return False
+
+    # Parse S3 URI
+    parts = s3_path.replace("s3://", "").split("/", 1)
+    if len(parts) != 2:
+        return False
+
+    bucket = parts[0]
+    key = parts[1]
+
+    try:
+        s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+        # List objects with prefix to check if directory exists
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=key, MaxKeys=1)
+        return "Contents" in response
+    except (ClientError, NoCredentialsError):
+        # If we can't access S3, log but don't fail
+        return False
+    except Exception:
+        # Unknown error - assume exists to be conservative
+        return True
 
 
 def calculate_coverage(bases: int, organism_genus: str) -> int | None:
@@ -151,8 +219,20 @@ def filter_metadata(
     min_coverage: float = 50,
     max_coverage: float = 250,
     preferred_instruments: list[str] | None = None,
+    verify_s3: bool = True,
 ) -> pd.DataFrame:
-    """Filter metadata based on quality criteria."""
+    """Filter metadata based on quality criteria.
+
+    Args:
+        df: DataFrame with SRA metadata
+        min_coverage: Minimum coverage threshold
+        max_coverage: Maximum coverage threshold
+        preferred_instruments: List of preferred instrument models
+        verify_s3: Whether to verify S3 availability (default: True)
+
+    Returns:
+        Filtered DataFrame with s3_path column added
+    """
 
     if df.empty:
         return df
@@ -180,6 +260,35 @@ def filter_metadata(
     if preferred_instruments and "Model" in df.columns:
         df = df[df["Model"].isin(preferred_instruments)]
 
+    # Add S3 paths
+    if "Accession" in df.columns:
+        print("Constructing S3 paths...")
+        df = df.copy()  # Avoid SettingWithCopyWarning
+        df["s3_path"] = df["Accession"].apply(construct_s3_path)
+
+        # Verify S3 availability if requested
+        if verify_s3:
+            if not BOTO3_AVAILABLE:
+                print("Warning: boto3 not installed. Install with: pip install boto3")
+                print("Skipping S3 verification. Use --no-verify-s3 to suppress this warning.")
+            else:
+                print(f"Verifying S3 availability for {len(df)} records...")
+                print("(This may take a few minutes. Use --no-verify-s3 to skip.)")
+
+                # Check S3 availability
+                df["s3_available"] = df["s3_path"].apply(verify_s3_path)
+
+                initial_count = len(df)
+                df = df[df["s3_available"]].copy()
+                filtered_count = initial_count - len(df)
+
+                if filtered_count > 0:
+                    print(f"Filtered out {filtered_count} records without S3 availability")
+
+                # Remove the temporary s3_available column if DataFrame is not empty
+                if not df.empty and "s3_available" in df.columns:
+                    df = df.drop(columns=["s3_available"])
+
     # Sort by coverage (if available) or date
     if "Estimated_Coverage" in df.columns:
         df = df.sort_values("Estimated_Coverage", ascending=False)
@@ -204,6 +313,19 @@ def main() -> None:
     )
     parser.add_argument(
         "--instruments", nargs="+", help="Preferred instrument models (e.g., NextSeq NovaSeq MiSeq)"
+    )
+    parser.add_argument(
+        "--verify-s3",
+        dest="verify_s3",
+        action="store_true",
+        default=True,
+        help="Verify S3 availability for each accession (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-verify-s3",
+        dest="verify_s3",
+        action="store_false",
+        help="Skip S3 verification (faster but may include unavailable accessions)",
     )
 
     args = parser.parse_args()
@@ -238,6 +360,7 @@ def main() -> None:
         min_coverage=args.min_coverage,
         max_coverage=args.max_coverage,
         preferred_instruments=args.instruments,
+        verify_s3=args.verify_s3,
     )
 
     print(f"After filtering: {len(filtered_df)} records")

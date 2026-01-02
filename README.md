@@ -43,9 +43,28 @@ The project focuses on six bacterial genera of public health importance:
 
 ### 1. Install Dependencies
 
+**Option A: Using Virtual Environment (Recommended)**
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate it
+source venv/bin/activate  # On Linux/Mac
+# or
+venv\Scripts\activate     # On Windows
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+**Option B: Direct Install**
+
 ```bash
 pip install -r requirements.txt
 ```
+
+**Note:** If you encounter numpy compatibility errors with Option B (especially on systems with Anaconda), use Option A with a virtual environment to ensure clean dependency versions.
 
 ### 2. Get NCBI API Key
 

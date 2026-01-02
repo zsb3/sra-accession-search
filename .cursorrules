@@ -4,6 +4,67 @@
 Python tools for searching NCBI SRA database and filtering results by coverage and quality metrics.
 Target organisms: bacterial pathogens (Listeria, Salmonella, E. coli, etc.)
 
+## 🤖 AI Agent Guidelines
+
+### File Organization (CRITICAL)
+- **Maximum 500 lines per file** - Split longer files into focused modules
+- **Maximum 400 lines per test file** - One test file per major feature/class
+- Use clear, descriptive file names: `test_filter_s3.py` not `test_stuff.py`
+- Group related functionality in same module/directory
+
+### Agent-Friendly Code Structure
+```
+✅ GOOD - Easy for agents to scan:
+tests/
+  test_filter_coverage.py      # 150 lines - coverage calculations
+  test_filter_s3.py             # 200 lines - S3 functionality
+  test_filter_core.py           # 180 lines - core filtering logic
+
+❌ BAD - Hard for agents to navigate:
+tests/
+  test_filter_metadata.py       # 1098 lines - everything mixed together
+```
+
+### Naming Conventions for Agent Discovery
+- **Files**: `<feature>_<function>.py` (e.g., `s3_verification.py`)
+- **Classes**: `<Noun><Verb>er` (e.g., `S3PathConstructor`, `CoverageCalculator`)
+- **Functions**: `<verb>_<noun>` (e.g., `construct_s3_path`, `verify_availability`)
+- **Test classes**: `Test<FeatureName>` (e.g., `TestS3Verification`)
+- **Test functions**: `test_<function>_<scenario>` (e.g., `test_construct_path_valid_accession`)
+
+### Section Markers (Required for long files)
+Use clear comment dividers for agent navigation:
+```python
+# ============================================================================
+# S3 PATH CONSTRUCTION
+# ============================================================================
+
+def construct_s3_path(accession: str) -> str:
+    """..."""
+    pass
+
+# ============================================================================
+# S3 PATH VERIFICATION
+# ============================================================================
+
+def verify_s3_path(path: str) -> bool:
+    """..."""
+    pass
+```
+
+### Discovery Tools for Agents
+When agents need to find code, they should:
+1. **First**: Use `grep_search` or `semantic_search` to locate relevant code
+2. **Then**: Use `read_file` with specific line ranges
+3. **Avoid**: Reading entire large files without searching first
+
+Example agent workflow:
+```
+❌ BAD: read_file(test_filter_metadata.py, 1, 1098)  # Too much at once
+✅ GOOD: grep_search("test_s3_verification")          # Find location first
+✅ GOOD: read_file(test_filter_s3.py, 1, 200)        # Read focused module
+```
+
 ## Code Style & Formatting
 
 ### Black Formatter

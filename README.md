@@ -335,19 +335,37 @@ tail -n +2 results/salmonella_filtered.csv | cut -d',' -f11 | \
 
 ```
 sra-accession-search/
-├── .git/                      # Git repository
-├── .gitignore                 # Ignored files (credentials, data)
-├── README.md                  # This file
-├── requirements.txt           # Python dependencies
-├── config.example.sh          # Template for credentials
+├── .git/                          # Git repository
+├── .gitignore                     # Ignored files (credentials, data)
+├── .cursorrules                   # Coding standards and AI guidelines
+├── AI_GUIDE.md                    # AI agent navigation guide
+├── README.md                      # This file
+├── requirements.txt               # Python dependencies
+├── config.example.sh              # Template for credentials
+├── Makefile                       # Common development commands
+├── pyproject.toml                 # Python project configuration
 ├── scripts/
-│   ├── search_sra.py          # Search NCBI SRA database
-│   └── filter_metadata.py     # Filter results by coverage/quality
-├── data/                      # Raw metadata (gitignored)
+│   ├── search_sra.py              # Search NCBI SRA database (180 lines)
+│   ├── filter_metadata.py         # Filter results by coverage/quality/S3 (390 lines)
+│   └── schemas.py                 # Pydantic data validation models (220 lines)
+├── tests/                         # Test suite (100% coverage, all files <400 lines)
+│   ├── conftest.py                # Shared fixtures and test configuration
+│   ├── test_search_sra.py         # Tests for SRA search functionality
+│   ├── test_schemas.py            # Tests for data validation models
+│   ├── test_filter_coverage.py    # Tests for coverage calculation (81 lines)
+│   ├── test_filter_parsing.py     # Tests for metadata parsing (229 lines)
+│   ├── test_filter_core.py        # Tests for core filtering logic (185 lines)
+│   ├── test_filter_main.py        # Tests for CLI integration (319 lines)
+│   ├── test_filter_s3.py          # Tests for S3 functionality (370 lines)
+│   └── fixtures/
+│       └── mock_search_output.json  # Test data
+├── data/                          # Raw metadata (gitignored)
 │   └── .gitkeep
-└── results/                   # Filtered results (gitignored)
+└── results/                       # Filtered results (gitignored)
     └── .gitkeep
 ```
+
+**Note:** All code files are kept under 500 lines (test files under 400 lines) for optimal AI agent navigation and comprehension. See [AI_GUIDE.md](AI_GUIDE.md) for details.
 
 ## Notes
 

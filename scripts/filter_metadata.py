@@ -22,6 +22,7 @@ from typing import Any
 
 from pydantic import ValidationError
 from schemas import SRASearchResult
+from tqdm import tqdm
 
 try:
     import boto3
@@ -275,8 +276,9 @@ def filter_metadata(
                 print(f"Verifying S3 availability for {len(df)} records...")
                 print("(This may take a few minutes. Use --no-verify-s3 to skip.)")
 
-                # Check S3 availability
-                df["s3_available"] = df["s3_path"].apply(verify_s3_path)
+                # Check S3 availability with progress bar
+                tqdm.pandas(desc="Verifying S3 paths")
+                df["s3_available"] = df["s3_path"].progress_apply(verify_s3_path)
 
                 initial_count = len(df)
                 df = df[df["s3_available"]].copy()

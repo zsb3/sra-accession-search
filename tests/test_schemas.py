@@ -212,6 +212,7 @@ class TestFilteredRecord:
         """Test creating a valid filtered record"""
         record = FilteredRecord(
             Accession="SRR12345",
+            BioProject="PRJNA123456",
             bases=300_000_000,
             Genus="Listeria",
             Estimated_Coverage=100,
@@ -221,6 +222,7 @@ class TestFilteredRecord:
         )
 
         assert record.Accession == "SRR12345"
+        assert record.BioProject == "PRJNA123456"
         assert record.bases == 300_000_000
         assert record.Estimated_Coverage == 100
 
@@ -230,6 +232,7 @@ class TestFilteredRecord:
 
         assert record.Accession == "SRR12345"
         assert record.bases == 100000
+        assert record.BioProject == ""
         assert record.Genus is None
         assert record.Estimated_Coverage is None
         assert record.Title == ""

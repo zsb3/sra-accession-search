@@ -173,6 +173,7 @@ class FilteredRecord(BaseModel):
 
     Attributes:
         Accession: SRA run accession (e.g., "SRR12345")
+        BioProject: NCBI BioProject ID (e.g., "PRJNA230403")
         bases: Total sequencing bases (integer)
         Genus: Organism genus name extracted from scientific name
         Estimated_Coverage: Calculated sequencing coverage (bases / genome_size)
@@ -185,6 +186,7 @@ class FilteredRecord(BaseModel):
     Example:
         >>> record = FilteredRecord(
         ...     Accession="SRR12345",
+        ...     BioProject="PRJNA123456",
         ...     bases=300000000,
         ...     Genus="Listeria",
         ...     Estimated_Coverage=100,
@@ -197,6 +199,7 @@ class FilteredRecord(BaseModel):
     """
 
     Accession: str = Field(..., min_length=1, description="SRA run accession")
+    BioProject: str = Field(default="", description="NCBI BioProject ID")
     bases: int = Field(..., ge=0, description="Total sequencing bases")
     Genus: str | None = Field(None, description="Organism genus name")
     Estimated_Coverage: int | None = Field(None, ge=0, description="Estimated coverage (x)")

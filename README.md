@@ -1,7 +1,7 @@
 # SRA Accession Search
 
 [![Tests](https://github.com/zsb3/sra-accession-search/actions/workflows/test.yml/badge.svg)](https://github.com/zsb3/sra-accession-search/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](https://github.com/zsb3/sra-accession-search)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/zsb3/sra-accession-search)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Public%20Domain-lightgrey)](LICENSE)
 

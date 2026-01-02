@@ -97,7 +97,10 @@ class TestExtractSummaryData:
         summaries = [
             {
                 "Runs": '<Run acc="SRR12345" total_bases="100000000"/>',
-                "ExpXml": "<Summary><Title>Test Sample</Title></Summary>",
+                "ExpXml": (
+                    "<Summary><Title>Test Sample</Title></Summary>"
+                    "<Bioproject>PRJNA123456</Bioproject>"
+                ),
                 "CreateDate": "2025/12/31",
                 "UpdateDate": "2025/12/31",
             }
@@ -107,6 +110,7 @@ class TestExtractSummaryData:
 
         assert len(records) == 1
         assert records[0]["Accession"] == "SRR12345"
+        assert records[0]["BioProject"] == "PRJNA123456"
         assert records[0]["Title"] == "Test Sample"
         assert records[0]["bases"] == 100000000
         assert records[0]["CreateDate"] == "2025/12/31"
@@ -181,6 +185,7 @@ class TestExtractSummaryData:
 
         records = extract_summary_data(summaries)
         assert records[0]["Accession"] == ""
+        assert records[0]["BioProject"] == ""
         assert records[0]["bases"] == 0
         assert records[0]["Title"] == ""
 

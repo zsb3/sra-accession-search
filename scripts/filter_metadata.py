@@ -70,17 +70,24 @@ def extract_summary_data(summaries: list[dict[str, Any]]) -> list[dict[str, Any]
                     except ValueError:
                         bases = 0
 
-            # Extract title from ExpXml
+            # Extract title and bioproject from ExpXml
             title = ""
+            bioproject = ""
             exp_xml = summary.get("ExpXml", "")
             if exp_xml:
                 title_match = re.search(r"<Title>([^<]+)</Title>", exp_xml)
                 if title_match:
                     title = title_match.group(1)
 
+                # Extract BioProject ID
+                bioproject_match = re.search(r"<Bioproject>([^<]+)</Bioproject>", exp_xml)
+                if bioproject_match:
+                    bioproject = bioproject_match.group(1)
+
             # Build record
             record = {
                 "Accession": accession,
+                "BioProject": bioproject,
                 "Title": title,
                 "CreateDate": summary.get("CreateDate", ""),
                 "UpdateDate": summary.get("UpdateDate", ""),

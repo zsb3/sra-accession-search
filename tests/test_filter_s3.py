@@ -6,7 +6,7 @@ import runpy
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -269,7 +269,7 @@ class TestS3Integration:
         with patch("scripts.filter_metadata.verify_s3_path") as mock_verify:
             # First accession exists, second doesn't
             mock_verify.side_effect = lambda path: "SRR36650731" in path
-            
+
             # Mock tqdm.pandas to make progress_apply just use apply
             with patch("scripts.filter_metadata.tqdm.pandas", side_effect=mock_tqdm_pandas):
                 result = fm(

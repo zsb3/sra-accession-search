@@ -8,7 +8,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, mock_open
 
-import pandas as pd
 import pytest
 
 # Add scripts to path
